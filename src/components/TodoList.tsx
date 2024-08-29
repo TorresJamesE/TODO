@@ -7,7 +7,20 @@ import { type TodoItemT } from "../types/types";
  *
  */
 export function TodoList() {
-  const [todos, setTodos] = useState<TodoItemT[]>([]);
+  const [todos, setTodos] = useState<TodoItemT[]>(() => {
+    const itemsInStorage = localStorage.getItem("todoItems");
+
+    if (!itemsInStorage) {
+      return [];
+    }
+    const parsedItems = JSON.parse(itemsInStorage);
+
+    return parsedItems;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("todoItems", JSON.stringify(todos));
+  }, [todos]);
 
   function onTodoAdd(todoItem: string) {
     setTodos((prevToDos) => {
@@ -86,8 +99,9 @@ export function TodoList() {
 }
 
 // - Update the todo app to set clicked items into a state of "in progress". Move "in progress" items to top of list.
-// - Save todo in locally (in browser)
-//   - fetch
-//     - useEffect
-//   - save
+// - Save todo in locally (in browser), when and how.
+//  - Pull from browser locally.
+//  - fetch
+//  - useEffect
+//  - save
 // - Save todo in a database
