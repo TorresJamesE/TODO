@@ -1,4 +1,4 @@
 export type TodoItemT = {
   text: string;
-  state: "complete" | "incomplete";
+  state: "complete" | "incomplete" | "in progress";
 };
