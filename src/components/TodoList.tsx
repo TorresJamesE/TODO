@@ -88,11 +88,12 @@ export function TodoList() {
 
   return (
     <div className="container">
+      <h1>TO-DO List</h1>
       <ToDoForm onTodoAdd={onTodoAdd}></ToDoForm>
       {listItems.length > 0 ? (
         <ul className="todo-list">{listItems}</ul>
       ) : (
-        <p>Add a To-Do to get started!</p>
+        <p>Kinda lonely here...</p>
       )}
     </div>
   );
