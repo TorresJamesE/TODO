@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
 import { ToDoForm } from "./Form";
 import { TodoItem } from "./TodoItem";
-import { type TodoItemT } from "../types/types";
+import { useState, useEffect } from "react";
+import {
+  ToDoAPISchema,
+  ToDoGetAPIResponseSchema,
+  type TodoItemT,
+} from "../types/types";
 
-/**
- *
- */
 export function TodoList() {
   const [todos, setTodos] = useState<TodoItemT[]>(() => {
     const itemsInStorage = localStorage.getItem("todoItems");
@@ -19,13 +20,57 @@ export function TodoList() {
   });
 
   useEffect(() => {
-    localStorage.setItem("todoItems", JSON.stringify(todos));
-  }, [todos]);
+    async function getNotes(notesId: string | null | undefined) {
+      const resp = await fetch(
+        `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
+      );
 
-  function onTodoAdd(todoItem: string) {
-    setTodos((prevToDos) => {
-      return [...prevToDos, { state: "incomplete", text: todoItem }];
+      const respBody = ToDoGetAPIResponseSchema.parse(await resp.json());
+      setTodos(respBody.notes);
+    }
+
+    const notesId = localStorage.getItem("notesId");
+
+    if (notesId) {
+      getNotes(notesId);
+    }
+  }, []);
+
+  function onTodoAdd(todoItem: TodoItemT) {
+    return saveToDo(todoItem);
+  }
+
+  async function saveToDo(
+    todoItem: TodoItemT,
+    noteId?: string | null | undefined
+  ) {
+    const updatedTodos = { notes: [...todos, todoItem] };
+    console.dir(updatedTodos);
+    // TODO: Save the stuff. Kthx.
+    const jsonPayload = JSON.stringify(updatedTodos);
+    console.log(jsonPayload);
+
+    const url = noteId
+      ? `${import.meta.env.VITE_NOTES_API_BASE_URL}/${noteId}`
+      : import.meta.env.VITE_NOTES_API_BASE_URL;
+    const resp = await fetch(url, {
+      method: "PUT",
+      body: jsonPayload,
+      headers: { "Content-Type": "application/json" },
     });
+
+    const respJSON = await resp.json();
+    console.log(respJSON);
+
+    console.log(resp);
+    const respBody = ToDoAPISchema.parse(respJSON);
+
+    console.log(resp);
+    console.log(respBody);
+    if (respBody) {
+      localStorage.setItem("notesId", respBody._id as string);
+      return setTodos((prevTodos) => [...prevTodos, todoItem]);
+    }
   }
 
   function removeToDoItem(idx: number) {

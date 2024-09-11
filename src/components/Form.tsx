@@ -1,8 +1,10 @@
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
+import { TodoItemT } from "../types/types";
+import { TodoItem } from "./TodoItem";
 
 type ToDoFormProps = {
-  onTodoAdd: (todo: string) => void;
+  onTodoAdd: (todo: TodoItemT) => void;
 };
 
 type FormValues = {
@@ -18,7 +20,11 @@ export function ToDoForm({ onTodoAdd }: ToDoFormProps) {
   } = useForm<FormValues>({ criteriaMode: "all" });
 
   const onSubmit = handleSubmit(({ todo }: FormValues) => {
-    onTodoAdd(todo);
+    const todoItem: TodoItemT = {
+      state: "incomplete",
+      text: todo,
+    };
+    onTodoAdd(todoItem);
     reset();
   });
 
