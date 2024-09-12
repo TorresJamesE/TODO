@@ -2,7 +2,6 @@ import { ToDoForm } from "./Form";
 import { TodoItem } from "./TodoItem";
 import { useState, useEffect } from "react";
 import {
-  ToDoAPIPutResponseSchema,
   ToDoAPISchema,
   ToDoGetAPIResponseSchema,
   type TodoItemT,
@@ -22,9 +21,11 @@ export function TodoList() {
 
   useEffect(() => {
     async function getNotes(notesId: string | null | undefined) {
-      const resp = await fetch(
-        `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
-      );
+      const apiUrlGet = notesId
+        ? `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
+        : import.meta.env.VITE_NOTES_API_BASE_URL;
+
+      const resp = await fetch(apiUrlGet);
 
       const respJson = await resp.json();
       try {
@@ -38,7 +39,7 @@ export function TodoList() {
 
     const notesId = localStorage.getItem("notesId");
 
-    if (notesId !== "undefined") {
+    if (notesId) {
       getNotes(notesId);
     }
   }, []);
@@ -47,23 +48,23 @@ export function TodoList() {
     return saveToDo(todoItem);
   }
 
-  function saveToDo(todoItem: TodoItemT) {
+  async function saveToDo(todoItem: TodoItemT) {
     const updatedTodos = [...todos, todoItem];
-    const respJSON = saveToAPI(updatedTodos);
+    const respJSON = await saveToAPI(updatedTodos);
 
-    if (
-      respJSON &&
-      respJSON.hasOwnProperty("id") &&
-      !localStorage.getItem("notesId")
-    ) {
-      localStorage.setItem("notesId", respJSON?.id);
+    // TODO: Add some user indication that the request failed.
+    // TODO: Graceful degradation if server is down!
+    if (respJSON && !localStorage.getItem("notesId")) {
+      localStorage.setItem("notesId", respJSON.id);
       return setTodos((prevTodos) => [...prevTodos, todoItem]);
     }
   }
 
   function removeToDoItem(idx: number) {
     setTodos((currentToDos) => {
-      return currentToDos.filter((_, i) => i !== idx);
+      const updatedToDos = currentToDos.filter((_, i) => i !== idx);
+      saveToAPI(updatedToDos);
+      return updatedToDos;
     });
   }
 
@@ -80,9 +81,17 @@ export function TodoList() {
     });
   }
 
+  /**
+   * Saves notes via API.
+   *
+   * @param todos TodoItemT[]
+   * @returns ToDoAPIPutResponseT
+   */
   async function saveToAPI(todos: TodoItemT[]) {
     const notesId = localStorage.getItem("notesId");
     const jsonPayload = JSON.stringify({ notes: todos });
+    console.log(jsonPayload);
+
     const url = notesId
       ? `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
       : import.meta.env.VITE_NOTES_API_BASE_URL;
@@ -93,18 +102,15 @@ export function TodoList() {
       headers: { "Content-Type": "application/json" },
     });
 
-    const respJSON: ToDoAPIPutResponseSchema = await resp
-      .json()
-      .then((data) => {
-        ToDoAPISchema.parse(data);
-        Promise.resolve(data);
-        return data;
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    const respJSON = await resp.json();
+    console.log(respJSON);
+    const { success, data, error } = ToDoAPISchema.safeParse(respJSON);
 
-    return respJSON;
+    if (success) {
+      return data;
+    } else {
+      console.log(error);
+    }
   }
 
   function handleInProgressItem(idx: number) {
@@ -127,7 +133,7 @@ export function TodoList() {
           };
           break;
       }
-
+      saveToAPI(todos);
       return todos;
     });
   }
@@ -155,16 +161,8 @@ export function TodoList() {
       {listItems.length > 0 ? (
         <ul className="todo-list">{listItems}</ul>
       ) : (
-        <p>Kinda lonely here...</p>
+        <p>Kinda lonely here...Add something!</p>
       )}
     </div>
   );
 }
-
-// - Update the todo app to set clicked items into a state of "in progress". Move "in progress" items to top of list.
-// - Save todo in locally (in browser), when and how.
-//  - Pull from browser locally.
-//  - fetch
-//  - useEffect
-//  - save
-// - Save todo in a database
