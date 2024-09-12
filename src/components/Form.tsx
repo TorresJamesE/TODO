@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { ErrorMessage } from "@hookform/error-message";
 import { TodoItemT } from "../types/types";
-import { TodoItem } from "./TodoItem";
 
 type ToDoFormProps = {
   onTodoAdd: (todo: TodoItemT) => void;

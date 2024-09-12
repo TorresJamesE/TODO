@@ -7,9 +7,12 @@ export const ToDoItemSchema = z.object({
 
 export type TodoItemT = z.infer<typeof ToDoItemSchema>;
 
+export type ToDoAPIPutResponseSchema = {
+  id?: string | undefined;
+};
+
 export const ToDoAPISchema = z.object({
-  _id: z.string().optional(),
-  // notes: z.array(ToDoItemSchema),
+  id: z.string().optional(),
 });
 
 export const ToDoGetAPIResponseSchema = z.object({

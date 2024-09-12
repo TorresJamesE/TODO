@@ -2,6 +2,7 @@ import { ToDoForm } from "./Form";
 import { TodoItem } from "./TodoItem";
 import { useState, useEffect } from "react";
 import {
+  ToDoAPIPutResponseSchema,
   ToDoAPISchema,
   ToDoGetAPIResponseSchema,
   type TodoItemT,
@@ -25,13 +26,19 @@ export function TodoList() {
         `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
       );
 
-      const respBody = ToDoGetAPIResponseSchema.parse(await resp.json());
-      setTodos(respBody.notes);
+      const respJson = await resp.json();
+      try {
+        ToDoGetAPIResponseSchema.parse(respJson);
+      } catch (error) {
+        console.log(error);
+      }
+
+      setTodos(respJson.notes);
     }
 
     const notesId = localStorage.getItem("notesId");
 
-    if (notesId) {
+    if (notesId !== "undefined") {
       getNotes(notesId);
     }
   }, []);
@@ -40,35 +47,16 @@ export function TodoList() {
     return saveToDo(todoItem);
   }
 
-  async function saveToDo(
-    todoItem: TodoItemT,
-    noteId?: string | null | undefined
-  ) {
-    const updatedTodos = { notes: [...todos, todoItem] };
-    console.dir(updatedTodos);
-    // TODO: Save the stuff. Kthx.
-    const jsonPayload = JSON.stringify(updatedTodos);
-    console.log(jsonPayload);
+  function saveToDo(todoItem: TodoItemT) {
+    const updatedTodos = [...todos, todoItem];
+    const respJSON = saveToAPI(updatedTodos);
 
-    const url = noteId
-      ? `${import.meta.env.VITE_NOTES_API_BASE_URL}/${noteId}`
-      : import.meta.env.VITE_NOTES_API_BASE_URL;
-    const resp = await fetch(url, {
-      method: "PUT",
-      body: jsonPayload,
-      headers: { "Content-Type": "application/json" },
-    });
-
-    const respJSON = await resp.json();
-    console.log(respJSON);
-
-    console.log(resp);
-    const respBody = ToDoAPISchema.parse(respJSON);
-
-    console.log(resp);
-    console.log(respBody);
-    if (respBody) {
-      localStorage.setItem("notesId", respBody._id as string);
+    if (
+      respJSON &&
+      respJSON.hasOwnProperty("id") &&
+      !localStorage.getItem("notesId")
+    ) {
+      localStorage.setItem("notesId", respJSON?.id);
       return setTodos((prevTodos) => [...prevTodos, todoItem]);
     }
   }
@@ -86,8 +74,37 @@ export function TodoList() {
         ...todos[idx],
         state: state,
       };
+
+      saveToAPI(todos);
       return todos;
     });
+  }
+
+  async function saveToAPI(todos: TodoItemT[]) {
+    const notesId = localStorage.getItem("notesId");
+    const jsonPayload = JSON.stringify({ notes: todos });
+    const url = notesId
+      ? `${import.meta.env.VITE_NOTES_API_BASE_URL}/${notesId}`
+      : import.meta.env.VITE_NOTES_API_BASE_URL;
+
+    const resp = await fetch(url, {
+      method: "PUT",
+      body: jsonPayload,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const respJSON: ToDoAPIPutResponseSchema = await resp
+      .json()
+      .then((data) => {
+        ToDoAPISchema.parse(data);
+        Promise.resolve(data);
+        return data;
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+
+    return respJSON;
   }
 
   function handleInProgressItem(idx: number) {
